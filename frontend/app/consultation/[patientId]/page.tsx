@@ -1,0 +1,460 @@
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import {
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  Phone,
+  PhoneOff,
+  Monitor,
+  FileText,
+  Activity,
+  Pill,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  Save,
+  Send,
+  Camera,
+  Settings,
+  Maximize,
+  Minimize,
+} from "lucide-react"
+
+export default function ConsultationPage({ params }: { params: { patientId: string } }) {
+  const [isVideoOn, setIsVideoOn] = useState(true)
+  const [isAudioOn, setIsAudioOn] = useState(true)
+  const [isCallActive, setIsCallActive] = useState(false)
+  const [consultationMode, setConsultationMode] = useState<"video" | "audio">("video")
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [consultationNotes, setConsultationNotes] = useState("")
+  const [expandedSections, setExpandedSections] = useState<string[]>(["vitals"])
+
+  // Mock patient data
+  const patientData = {
+    id: params.patientId,
+    name: "Sarah Johnson",
+    age: 34,
+    bloodGroup: "O+",
+    allergies: ["Penicillin", "Shellfish"],
+    conditions: ["Hypertension", "Type 2 Diabetes"],
+    currentVitals: {
+      bloodPressure: "128/82 mmHg",
+      heartRate: "72 bpm",
+      temperature: "98.6°F",
+      oxygenSaturation: "98%",
+      weight: "68.5 kg",
+      height: "165 cm",
+    },
+    medicalHistory: [
+      {
+        date: "2024-01-15",
+        condition: "Hypertension",
+        treatment: "Lisinopril 10mg daily",
+        doctor: "Dr. Michael Chen",
+      },
+      {
+        date: "2023-12-10",
+        condition: "Type 2 Diabetes",
+        treatment: "Metformin 500mg twice daily",
+        doctor: "Dr. Emily Rodriguez",
+      },
+    ],
+    currentMedications: [
+      {
+        name: "Lisinopril",
+        dosage: "10mg",
+        frequency: "Once daily",
+        prescribedDate: "2024-01-15",
+      },
+      {
+        name: "Metformin",
+        dosage: "500mg",
+        frequency: "Twice daily",
+        prescribedDate: "2023-12-10",
+      },
+    ],
+    labReports: [
+      {
+        date: "2024-01-20",
+        test: "HbA1c",
+        result: "7.2%",
+        range: "< 7.0%",
+        status: "elevated",
+      },
+      {
+        date: "2024-01-20",
+        test: "Total Cholesterol",
+        result: "185 mg/dL",
+        range: "< 200 mg/dL",
+        status: "normal",
+      },
+    ],
+  }
+
+  const toggleSection = (section: string) => {
+    setExpandedSections((prev) => (prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]))
+  }
+
+  const startCall = () => {
+    setIsCallActive(true)
+    console.log("Starting consultation call...")
+  }
+
+  const endCall = () => {
+    setIsCallActive(false)
+    setIsVideoOn(false)
+    setIsAudioOn(false)
+    console.log("Ending consultation call...")
+  }
+
+  const toggleVideo = () => {
+    setIsVideoOn(!isVideoOn)
+  }
+
+  const toggleAudio = () => {
+    setIsAudioOn(!isAudioOn)
+  }
+
+  const switchToAudio = () => {
+    setConsultationMode("audio")
+    setIsVideoOn(false)
+  }
+
+  const switchToVideo = () => {
+    setConsultationMode("video")
+    setIsVideoOn(true)
+  }
+
+  const saveNotes = () => {
+    console.log("Saving consultation notes:", consultationNotes)
+    // Here you would save to backend
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="bg-card border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
+              ← Back
+            </Button>
+            <div>
+              <h1 className="font-semibold text-foreground">Consultation</h1>
+              <p className="text-sm text-muted-foreground">{patientData.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="flex items-center space-x-1">
+              <Clock className="w-3 h-3" />
+              <span>45:23</span>
+            </Badge>
+            <Button variant="ghost" size="sm">
+              <Settings className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex h-[calc(100vh-73px)]">
+        {/* Video Call Section */}
+        <div className={`${isFullscreen ? "w-full" : "w-2/3"} bg-slate-900 relative transition-all duration-300`}>
+          {/* Video Display */}
+          <div className="h-full flex items-center justify-center relative">
+            {isCallActive && consultationMode === "video" ? (
+              <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                {isVideoOn ? (
+                  <div className="relative w-full h-full">
+                    {/* Main video (patient) */}
+                    <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <Avatar className="w-32 h-32 mx-auto mb-4">
+                          <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
+                            {patientData.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="text-xl font-medium">{patientData.name}</p>
+                        <p className="text-slate-300">Patient Video</p>
+                      </div>
+                    </div>
+                    {/* Doctor's video (small overlay) */}
+                    <div className="absolute top-4 right-4 w-48 h-36 bg-slate-700 rounded-lg border-2 border-white/20 flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <Avatar className="w-16 h-16 mx-auto mb-2">
+                          <AvatarFallback className="bg-primary text-primary-foreground">DC</AvatarFallback>
+                        </Avatar>
+                        <p className="text-sm">Dr. Chen</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-white">
+                    <VideoOff className="w-24 h-24 mx-auto mb-4 text-slate-400" />
+                    <p className="text-xl font-medium">Video Off</p>
+                    <p className="text-slate-300">Audio-only consultation</p>
+                  </div>
+                )}
+              </div>
+            ) : isCallActive && consultationMode === "audio" ? (
+              <div className="text-center text-white">
+                <div className="w-32 h-32 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Phone className="w-16 h-16 text-primary-foreground" />
+                </div>
+                <p className="text-2xl font-medium mb-2">Audio Call Active</p>
+                <p className="text-slate-300">Connected with {patientData.name}</p>
+                <div className="mt-6 flex items-center justify-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-green-400">Call in progress</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-white">
+                <Monitor className="w-24 h-24 mx-auto mb-4 text-slate-400" />
+                <p className="text-xl font-medium mb-4">Ready to Start Consultation</p>
+                <p className="text-slate-300 mb-6">Click start to begin video or audio call</p>
+                <div className="flex items-center justify-center space-x-4">
+                  <Button onClick={startCall} className="bg-primary hover:bg-primary/90">
+                    <Video className="w-5 h-5 mr-2" />
+                    Start Video Call
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setConsultationMode("audio")
+                      startCall()
+                    }}
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    <Phone className="w-5 h-5 mr-2" />
+                    Audio Only
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Call Controls */}
+          {isCallActive && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center space-x-4 bg-black/50 backdrop-blur-sm rounded-full px-6 py-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAudio}
+                className={`rounded-full w-12 h-12 ${
+                  isAudioOn ? "bg-white/20 text-white" : "bg-destructive text-destructive-foreground"
+                }`}
+              >
+                {isAudioOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+              </Button>
+
+              {consultationMode === "video" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleVideo}
+                  className={`rounded-full w-12 h-12 ${
+                    isVideoOn ? "bg-white/20 text-white" : "bg-destructive text-destructive-foreground"
+                  }`}
+                >
+                  {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+                </Button>
+              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={consultationMode === "video" ? switchToAudio : switchToVideo}
+                className="rounded-full w-12 h-12 bg-white/20 text-white"
+              >
+                {consultationMode === "video" ? <Phone className="w-5 h-5" /> : <Camera className="w-5 h-5" />}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="rounded-full w-12 h-12 bg-white/20 text-white"
+              >
+                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={endCall}
+                className="rounded-full w-12 h-12 bg-destructive text-destructive-foreground"
+              >
+                <PhoneOff className="w-5 h-5" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Patient Information Panel */}
+        {!isFullscreen && (
+          <div className="w-1/3 bg-card border-l border-border flex flex-col">
+            <div className="p-4 border-b border-border">
+              <div className="flex items-center space-x-3">
+                <Avatar className="w-12 h-12">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {patientData.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-semibold text-foreground">{patientData.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {patientData.age} years • {patientData.bloodGroup}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <ScrollArea className="flex-1">
+              <div className="p-4 space-y-4">
+                {/* Current Vitals */}
+                <Collapsible open={expandedSections.includes("vitals")}>
+                  <CollapsibleTrigger
+                    onClick={() => toggleSection("vitals")}
+                    className="flex items-center justify-between w-full p-3 bg-accent rounded-lg hover:bg-accent/80 transition-colors"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Activity className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Current Vitals</span>
+                    </div>
+                    {expandedSections.includes("vitals") ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2">
+                    {Object.entries(patientData.currentVitals).map(([key, value]) => (
+                      <div key={key} className="flex justify-between items-center p-2 bg-background rounded">
+                        <span className="text-sm text-muted-foreground capitalize">
+                          {key.replace(/([A-Z])/g, " $1").trim()}
+                        </span>
+                        <span className="text-sm font-medium text-foreground">{value}</span>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Medical History */}
+                <Collapsible open={expandedSections.includes("history")}>
+                  <CollapsibleTrigger
+                    onClick={() => toggleSection("history")}
+                    className="flex items-center justify-between w-full p-3 bg-accent rounded-lg hover:bg-accent/80 transition-colors"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <FileText className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Medical History</span>
+                    </div>
+                    {expandedSections.includes("history") ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2">
+                    {patientData.medicalHistory.map((record, index) => (
+                      <div key={index} className="p-3 bg-background rounded border border-border">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-medium text-foreground">{record.condition}</span>
+                          <span className="text-xs text-muted-foreground">{record.date}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">{record.treatment}</p>
+                        <p className="text-xs text-muted-foreground">Dr: {record.doctor}</p>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Current Medications */}
+                <Collapsible open={expandedSections.includes("medications")}>
+                  <CollapsibleTrigger
+                    onClick={() => toggleSection("medications")}
+                    className="flex items-center justify-between w-full p-3 bg-accent rounded-lg hover:bg-accent/80 transition-colors"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Pill className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Current Medications</span>
+                    </div>
+                    {expandedSections.includes("medications") ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2">
+                    {patientData.currentMedications.map((medication, index) => (
+                      <div key={index} className="p-3 bg-background rounded border border-border">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-medium text-foreground">{medication.name}</span>
+                          <span className="text-sm text-muted-foreground">{medication.dosage}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{medication.frequency}</p>
+                        <p className="text-xs text-muted-foreground">Since: {medication.prescribedDate}</p>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Allergies */}
+                <div className="p-3 bg-accent rounded-lg">
+                  <h4 className="font-medium text-foreground mb-2">Allergies</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {patientData.allergies.map((allergy, index) => (
+                      <Badge key={index} variant="destructive" className="text-xs">
+                        {allergy}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+
+            {/* Consultation Notes */}
+            <div className="p-4 border-t border-border">
+              <Label htmlFor="notes" className="text-sm font-medium mb-2 block">
+                Consultation Notes
+              </Label>
+              <Textarea
+                id="notes"
+                placeholder="Enter consultation notes..."
+                value={consultationNotes}
+                onChange={(e) => setConsultationNotes(e.target.value)}
+                className="min-h-[100px] mb-3"
+              />
+              <div className="flex space-x-2">
+                <Button onClick={saveNotes} className="flex-1">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Notes
+                </Button>
+                <Button variant="outline" className="flex-1 bg-transparent">
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Report
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
