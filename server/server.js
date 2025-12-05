@@ -12,6 +12,9 @@ import reportRoutes from "./routes/reportRoutes.js"
 import aiRoutes from "./routes/aiRoutes.js";
 import accessRoutes from "./routes/accessRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import appointmentsRouter from "./routes/appointmentRoutes.js";
+import blockchainRoutes from './routes/blockchain.js';
+
 
 
 // Connect to MongoDB
@@ -22,9 +25,11 @@ const app = express();
 // Middleware
 app.use(cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST", "OPTIONS","DELETE","PUT"],
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS","DELETE","PUT","PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }));
+  
 app.use(express.json());
 
 // Routes
@@ -36,6 +41,8 @@ app.use("/api/report", reportRoutes);
 app.use("/api/ai", aiRoutes); 
 app.use("/api/access", accessRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/appointments", appointmentsRouter);
+app.use('/api/blockchain', blockchainRoutes);
 
 // Health check
 app.get("/", (req, res) => {

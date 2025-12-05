@@ -24,6 +24,8 @@ const reportSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+      cloudinaryPublicId: { type: String },     // <-- new field
+  blockHash: { type: String }, 
   },
   { timestamps: true }
 );

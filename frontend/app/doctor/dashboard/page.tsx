@@ -1059,6 +1059,9 @@ export default function DoctorDashboard() {
               <p className="text-sm text-muted-foreground">
                 License: {docData?.licenceNo || docData?.license || "License"}
               </p>
+              <p className="text-sm text-muted-foreground">
+                DoctorId: {docData?.doctorId || docData?.doctorId || "DoctorId"}
+              </p>
             </div>
           </div>
         </div>

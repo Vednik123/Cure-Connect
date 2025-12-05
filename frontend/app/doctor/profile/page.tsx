@@ -76,7 +76,7 @@ export default function DoctorProfilePage() {
           <form className="grid gap-4" onSubmit={handleSubmit}>
             {Object.entries(profile)
               .filter(([key]) =>
-                !["_id", "createdAt", "updatedAt", "__v", "profilePic", "user"].includes(key)
+                !["_id", "createdAt", "updatedAt", "__v", "profilePic", "user","doctorId"].includes(key)
               )
               .map(([key, value]) => (
                 <div key={key} className="grid gap-1">
