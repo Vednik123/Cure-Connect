@@ -47,29 +47,40 @@ export default function DoctorPatientsPage() {
 
   const search = async () => {
     if (!pid.trim()) {
-      setError("Please enter a Patient ID")
-      setResult(null)
-      setReports([])
-      setNotFound(false)
-      return
+      setError("Please enter a Patient ID");
+      setResult(null);
+      setReports([]);
+      setNotFound(false);
+      return;
     }
 
     if (!token) {
-      setError("Not authorized")
-      return
+      setError("Not authorized");
+      return;
     }
 
-    setLoading(true)
-    setError("")
-    setResult(null)
-    setReports([])
-    setNotFound(false)
+    setLoading(true);
+    setError("");
+    setResult(null);
+    setReports([]);
+    setNotFound(false);
 
     try {
-      // Fetch patient details
-      const res = await api.get(`/doctor/lookup/${pid.trim()}`)
+      // 1️⃣ Check access first
+      const accessRes = await api.get(`/access/check/${pid.trim()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!accessRes.data.allowed) {
+        setError("You don't have access to this patient's data. Send a request and wait for approval.");
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ Fetch patient details (you already had this)
+      const res = await api.get(`/doctor/lookup/${pid.trim()}`);
       if (res.data) {
-        const p = res.data
+        const p = res.data;
         setResult({
           patientId: p.patientId || pid,
           name: p.name || "N/A",
@@ -78,23 +89,24 @@ export default function DoctorPatientsPage() {
           height: p.height ?? undefined,
           weight: p.weight ?? undefined,
           phone: p.phone || "N/A",
-        })
+        });
       } else {
-        setNotFound(true)
+        setNotFound(true);
       }
 
-      // Fetch patient reports
+      // 3️⃣ Fetch reports only if access allowed
       const reportsRes = await api.get(`/report/patient/${pid.trim()}`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-      setReports(reportsRes.data)
+      });
+      setReports(reportsRes.data);
     } catch (err: any) {
-      console.error(err)
-      setError(err.response?.data?.message || "Error fetching patient data")
+      console.error(err);
+      setError(err.response?.data?.message || "Error fetching patient data");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
 
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -148,35 +160,35 @@ export default function DoctorPatientsPage() {
     }
   }
 
- const sendAccessRequest = async () => {
-  try {
-    // 1️⃣ Send access request
-    const res = await api.post(
-      "/access/request",
-      { patientId: pid },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+  const sendAccessRequest = async () => {
+    try {
+      // 1️⃣ Send access request
+      const res = await api.post(
+        "/access/request",
+        { patientId: pid },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    alert("Access request sent to patient for approval.");
+      alert("Access request sent to patient for approval.");
 
-    // 2️⃣ (Optional) If you want, you can poll later or check manually whether access is approved
-    // Example: Wait for patient approval before checking access
-    // const accessRes = await api.get(`/doctor/access-check/${pid}`, {
-    //   headers: { Authorization: `Bearer ${token}` },
-    // });
-    // if (!accessRes.data.allowed) {
-    //   setError("Access not granted by patient or expired.");
-    //   setLoading(false);
-    //   return;
-    // }
+      // 2️⃣ (Optional) If you want, you can poll later or check manually whether access is approved
+      // Example: Wait for patient approval before checking access
+      // const accessRes = await api.get(`/doctor/access-check/${pid}`, {
+      //   headers: { Authorization: `Bearer ${token}` },
+      // });
+      // if (!accessRes.data.allowed) {
+      //   setError("Access not granted by patient or expired.");
+      //   setLoading(false);
+      //   return;
+      // }
 
-  } catch (err: any) {
-    alert(err.response?.data?.message || "Failed to send access request.");
-  }
-};
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to send access request.");
+    }
+  };
 
 
-  
+
 
 
 
@@ -193,13 +205,19 @@ export default function DoctorPatientsPage() {
             value={pid}
             onChange={(e) => setPid(e.target.value)}
           />
-          <Button onClick={search} disabled={loading}>
-            {loading ? "Searching..." : "Search"}
+
+
+
+          <Button onClick={search} disabled={loading || !pid.trim()}>
+            {loading ? "Checking Access..." : "Search"}
           </Button>
           <Button onClick={sendAccessRequest} disabled={!pid || loading}>
             Request Access
           </Button>
-          
+
+
+
+
         </CardContent>
         {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
       </Card>

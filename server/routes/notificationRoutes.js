@@ -8,7 +8,7 @@ import {
 
 const router = express.Router();
 
-router.get("/:userId", protect, getNotifications);
+router.get("/", protect, getNotifications);        // 👈 NO :userId here
 router.put("/:id/read", protect, markAsRead);
 router.delete("/:id", protect, deleteNotification);
 

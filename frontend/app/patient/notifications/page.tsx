@@ -14,7 +14,10 @@ interface Notification {
   read: boolean;
   createdAt: string;
   updatedAt: string;
+  relatedRequestId?: string;   // ⭐ NEW
 }
+
+
 
 export default function PatientNotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -33,32 +36,35 @@ export default function PatientNotificationsPage() {
   // ✅ Fetch notifications for the logged-in patient
   const fetchNotifications = async () => {
     try {
-      const patientId = sessionStorage.getItem("patientId");
-      if (!patientId || !token) return;
+      if (!token) return;
 
-      const res = await api.get(`/notifications/${patientId}`, {
+      const res = await api.get("/notifications", {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       setNotifications(res.data);
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
     }
   };
 
+
   // ✅ Accept or Reject Access
-  const handleResponse = async (id: string, response: "accepted" | "rejected") => {
+  const handleResponse = async (requestId: string, response: "accepted" | "rejected") => {
     try {
       await api.post(
         "/access/respond",
-        { requestId: id, response },
+        { requestId, response },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       alert(`Access ${response}`);
-      fetchNotifications();
+      fetchNotifications();   // refresh list
     } catch (err) {
       console.error(err);
+      alert("Failed to update access request");
     }
   };
+
 
   // ✅ Mark notification as read
   const markAsRead = async (id: string) => {
@@ -101,25 +107,32 @@ export default function PatientNotificationsPage() {
               <div className="font-medium">{n.senderName || "System"}</div>
               <div>{n.message}</div>
 
-              {n.type === "access" && n.message.includes("Access request") && (
+              {n.type === "access" && n.relatedRequestId && (
                 <div className="flex gap-2 mt-2">
-                  <Button size="sm" onClick={() => handleResponse(n._id, "accepted")}>
+                  <Button
+                    size="sm"
+                    disabled={n.read}
+                    onClick={() => handleResponse(n.relatedRequestId!, "accepted")}
+                  >
                     Accept
                   </Button>
                   <Button
                     size="sm"
                     variant="destructive"
-                    onClick={() => handleResponse(n._id, "rejected")}
+                    disabled={n.read}
+                    onClick={() => handleResponse(n.relatedRequestId!, "rejected")}
                   >
                     Reject
                   </Button>
                 </div>
               )}
 
+
+
               <div className="flex gap-2 mt-2">
-                <Button variant="outline" size="sm" onClick={() => markAsRead(n._id)}>
+                {/* <Button variant="outline" size="sm" onClick={() => markAsRead(n._id)}>
                   Mark as Read
-                </Button>
+                </Button> */}
                 <Button variant="ghost" size="sm" onClick={() => deleteNotification(n._id)}>
                   Delete
                 </Button>
