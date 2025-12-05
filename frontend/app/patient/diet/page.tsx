@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import axios from "axios"
 import { Upload, Send, ArrowBigDownDash, ArrowDownLeftFromCircle, ArrowUpFromDot, ArrowRightSquare } from "lucide-react"
+// import dotenv from "dotenv";
+// dotenv.config();
+
 
 export default function PatientDietPage() {
   const [query, setQuery] = useState("")
@@ -81,7 +84,7 @@ export default function PatientDietPage() {
   }
 
  const handleModelReport = () => {
-  window.location.href = "http://localhost:5001/"; // Flask app homepage
+  window.location.href = `${process.env.NEXT_PUBLIC_FLASK_URL}`;// Flask app homepage
 };
 
 
