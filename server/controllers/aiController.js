@@ -39,25 +39,51 @@ async function callGemini(prompt) {
 }
 
 // 🩺 Existing Healthcare Chat Endpoint
+// 🩺 Existing Healthcare Chat Endpoint (multi-language)
 export const getAIResponse = async (req, res) => {
   try {
-    const { message } = req.body;
-    if (!message || message.trim() === "")
-      return res.status(400).json({ reply: "Please enter a health-related query." });
+    const { message, language } = req.body;
 
+    if (!message || message.trim() === "") {
+      return res
+        .status(400)
+        .json({ reply: "Please enter a health-related query." });
+    }
+
+    // 1️⃣ Decide language instruction based on client selection
+    const lang = language || "en-US";
+    let languageInstruction = "Reply in clear, simple English.";
+
+    if (lang === "hi-IN") {
+      languageInstruction =
+        "जवाब हमेशा सरल और स्पष्ट हिंदी में दें। अंग्रेज़ी शब्द केवल तभी उपयोग करें जब बहुत जरूरी हो।";
+    } else if (lang === "mr-IN") {
+      languageInstruction =
+        "उत्तर नेहमी साध्या आणि स्पष्ट मराठीत द्या. इंग्रजी शब्द फक्त खूपच गरजेचे असतील तेव्हाच वापरा.";
+    }
+
+    // 2️⃣ Build prompt for Gemini
     const prompt = `
 You are a strict healthcare assistant. Only answer healthcare-related queries.
 If the user asks anything else, politely respond: "Please ask something related to healthcare."
-User: "${message}"
+
+${languageInstruction}
+
+User message:
+"${message}"
 `;
 
+    // 3️⃣ Call model
     const aiReply = await callGemini(prompt);
+
+    // 4️⃣ Send reply back
     res.json({ reply: aiReply });
   } catch (error) {
     console.error("AI Controller Error:", error.response?.data || error.message);
     res.status(500).json({ reply: "Failed to get AI response" });
   }
 };
+
 
 // 🍎 Generate Diet Plan from Typed Text
 export const getDietFromText = async (req, res) => {
