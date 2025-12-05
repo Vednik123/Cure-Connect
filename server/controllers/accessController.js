@@ -83,13 +83,10 @@ export const respondAccessRequest = async (req, res) => {
       { read: true }
     );
 
-    const patientProfile = await Patient.findOne({ user: user._id });
-    const patientName = patientProfile?.name || "Patient";
-
     // ⭐ Doctor notification: "Your access request was accepted/rejected"
     await Notification.create({
       userId: request.doctorId,             // doctor is a User
-      senderName: patientName || "Patient",
+      senderName: patient.name || "Patient",
       message: `Your access request was ${response} by ${patient.name || "the patient"}`,
       type: "access",
     });
