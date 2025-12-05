@@ -59,6 +59,7 @@ export const respondAccessRequest = async (req, res) => {
       return res.status(404).json({ message: "Request not found" });
     }
 
+    // Ensure this patient owns the request
     if (request.patientId.toString() !== patient._id.toString()) {
       return res.status(403).json({ message: "Unauthorized action" });
     }
@@ -69,21 +70,27 @@ export const respondAccessRequest = async (req, res) => {
 
     request.status = response;
     if (response === "accepted") {
-      //  request.expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hr real time
-      request.expiresAt = new Date(Date.now() + 60 * 1000); // 1 minute for testing
+      // 5 minutes validity
+      request.expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    } else {
+      request.expiresAt = null;
     }
     await request.save();
 
-    // ⭐ Mark all related notifications as read
+    // Mark related notifications as read on patient side
     await Notification.updateMany(
       { relatedRequestId: requestId, userId: patient._id },
       { read: true }
     );
 
+    const patientProfile = await Patient.findOne({ user: user._id });
+    const patientName = patientProfile?.name || "Patient";
+
+    // ⭐ Doctor notification: "Your access request was accepted/rejected"
     await Notification.create({
-      userId: request.doctorId,
-      senderName: patient.name,
-      message: `Your access request was ${response} by ${patient.name}`,
+      userId: request.doctorId,             // doctor is a User
+      senderName: patientName || "Patient",
+      message: `Your access request was ${response} by ${patient.name || "the patient"}`,
       type: "access",
     });
 
