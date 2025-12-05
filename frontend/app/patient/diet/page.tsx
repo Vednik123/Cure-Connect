@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import axios from "axios"
-import { Upload, Send } from "lucide-react"
+import { Upload, Send, ArrowBigDownDash, ArrowDownLeftFromCircle, ArrowUpFromDot, ArrowRightSquare } from "lucide-react"
 
 export default function PatientDietPage() {
   const [query, setQuery] = useState("")
@@ -80,6 +80,12 @@ export default function PatientDietPage() {
     night: "bg-purple-50 border-purple-200",
   }
 
+ const handleModelReport = () => {
+  window.location.href = "http://localhost:5001/"; // Flask app homepage
+};
+
+
+
   return (
     <main className="p-6 max-w-3xl mx-auto">
       <Card className="shadow-md border">
@@ -109,6 +115,10 @@ export default function PatientDietPage() {
               <Upload className="w-4 h-4 mr-2" /> Upload Report
             </Button>
           </div>
+
+          <Button onClick={handleModelReport}>
+            <ArrowRightSquare className="w-4 h-4 mr-2" /> Nutrition Recommender
+          </Button>
 
           {loading && <p className="text-sm text-muted-foreground animate-pulse">Analyzing your health data...</p>}
           {error && <p className="text-sm text-red-500">{error}</p>}
