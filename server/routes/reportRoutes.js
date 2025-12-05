@@ -138,18 +138,59 @@ router.get("/patient/:patientId", protect, async (req, res) => {
   }
 })
 
+// router.delete("/:reportId", protect, async (req, res) => {
+//   try {
+//     const { reportId } = req.params
+//     const report = await Report.findById(reportId)
+//     if (!report) return res.status(404).json({ message: "Report not found" })
+//     await report.deleteOne()
+//     res.status(200).json({ message: "Report deleted successfully" })
+//   } catch (err) {
+//     console.error("Delete report error:", err)
+//     res.status(500).json({ message: "Failed to delete report" })
+//   }
+// })
+
+// export default router;
+
+
+
 router.delete("/:reportId", protect, async (req, res) => {
   try {
-    const { reportId } = req.params
-    const report = await Report.findById(reportId)
-    if (!report) return res.status(404).json({ message: "Report not found" })
+    const { reportId } = req.params;
+    const report = await Report.findById(reportId);
 
-    await report.deleteOne()
-    res.status(200).json({ message: "Report deleted successfully" })
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    // keep a copy of needed fields BEFORE deleting
+    const reportSnapshot = {
+      reportId: report._id.toString(),
+      patientId: report.patientId,
+      type: report.type,
+      url: report.url,
+      cloudinaryPublicId: report.cloudinaryPublicId || null,
+      uploadedBy: report.uploadedBy ? report.uploadedBy.toString() : null,
+      uploadedAt: report.createdAt ? report.createdAt.toISOString() : null,
+    };
+
+    // delete the report from normal collection
+    await report.deleteOne();
+
+    // append a new block that records this deletion
+    await addBlock({
+      action: "REPORT_DELETED",
+      ...reportSnapshot,
+      deletedAt: new Date().toISOString(),
+      deletedBy: req.user?._id?.toString() || req.user?.id || null,
+    });
+
+    res.status(200).json({ message: "Report deleted successfully" });
   } catch (err) {
-    console.error("Delete report error:", err)
-    res.status(500).json({ message: "Failed to delete report" })
+    console.error("Delete report error:", err);
+    res.status(500).json({ message: "Failed to delete report" });
   }
-})
+});
 
 export default router;
