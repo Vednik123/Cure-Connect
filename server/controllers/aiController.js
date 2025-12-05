@@ -5,7 +5,20 @@ import fetch from "node-fetch";
 import { fileTypeFromBuffer } from "file-type";
 import fs from "fs";
 import path from "path";
-import pdf from "pdf-poppler";
+import pdfParse from "pdf-parse";
+// import pdf from "pdf-poppler";
+
+
+// 🔍 Helper: Extract text from PDF using pdf2json (no native deps)
+// 🔍 Helper: Extract text from PDF using pdf2json (no native deps)
+async function extractTextFromPDFBuffer(buffer) {
+  const data = await pdfParse(buffer);
+  // data.text is all textual content
+  return data.text || "";
+}
+
+
+
 
 
 const tmpDir = "./tmp"; // Make sure this exists
@@ -115,6 +128,7 @@ If the input is not health-related, reply: "Please ask something related to heal
 };
 
 // 📄 Generate Diet Plan from Uploaded Report (PDF)
+// 📄 Generate Diet Plan from Uploaded Report (PDF or Image)
 export const getDietFromReport = async (req, res) => {
   try {
     const file = req.file;
@@ -122,38 +136,63 @@ export const getDietFromReport = async (req, res) => {
 
     const buffer = file.buffer;
     const filename = file.originalname;
+    const ext = path.extname(filename).toLowerCase();
+
     const tempPath = path.join(tmpDir, filename);
-    fs.writeFileSync(tempPath, buffer);
+    fs.writeFileSync(tempPath, buffer); // still useful for Tesseract
 
-    let imagePath = tempPath;
+    let extractedText = "";
 
-    // Convert PDF to image if needed
-    if (filename.toLowerCase().endsWith(".pdf")) {
-      const outputPath = path.join(tmpDir, filename.replace(".pdf", ""));
-      const options = { format: "png", out_dir: tmpDir, out_prefix: path.basename(outputPath), page: 1 };
-      await pdf.convert(tempPath, options);
-      imagePath = `${outputPath}-1.png`;
-      console.log("Converted PDF to image:", imagePath);
+    if (ext === ".pdf") {
+      // ✅ Extract text from PDF using pdf-parse (works for text-based PDFs)
+      try {
+        const data = await pdfParse(buffer);
+        extractedText = data.text || "";
+        console.log(
+          "getDietFromReport → PDF text length (pdf-parse):",
+          extractedText.length
+        );
+      } catch (err) {
+        console.error("getDietFromReport → PDF parse error:", err);
+      }
+    } else {
+      // 🧠 For images (jpg/png/etc), use Tesseract OCR
+      try {
+        console.log("getDietFromReport → running Tesseract on image");
+        const ocrResult = await Tesseract.recognize(
+          tempPath,
+          "eng+hin+mar" // you can tweak languages if needed
+        );
+        extractedText = ocrResult.data.text || "";
+        console.log(
+          "getDietFromReport → OCR text length:",
+          extractedText.length
+        );
+      } catch (err) {
+        console.error("getDietFromReport → OCR error:", err);
+      }
     }
 
-    // OCR
-    const ocrResult = await Tesseract.recognize(imagePath, "eng");
-    const extractedText = ocrResult.data.text?.trim().slice(0, 4000);
+    // Cleanup temp file
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
 
-    // Cleanup
-    fs.unlinkSync(tempPath);
-    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    extractedText = (extractedText || "").trim().slice(0, 4000);
 
-    if (!extractedText) return res.status(400).json({ reply: "No readable text found." });
+    if (!extractedText) {
+      return res.status(400).json({
+        reply:
+          "No readable text found in the report. If this is a scanned PDF, please upload it as a clear image (JPG/PNG) or a text-based PDF.",
+      });
+    }
 
     // Call Gemini API
     const prompt = `
-You are an AI nutrition expert. Analyze the following health report text:
+You are a certified AI nutritionist. Based on this health report text:
 "${extractedText}"
 
-Create a diet plan including:
-- Meal schedule (Breakfast, Lunch, Dinner)
-- Recommended foods with calories & protein
+Create a detailed personalized diet plan including:
+- Meal schedule (Breakfast, Lunch, Snack, Dinner)
+- Recommended foods with approximate calories & protein
 - Foods to avoid
 - Short lifestyle suggestions
 
@@ -169,6 +208,9 @@ If the document isn’t health-related, reply: "Please upload a health-related r
 };
 
 
+
+
+// 🧾 Summarize Report (PDF or Image)
 // 🧾 Summarize Report (PDF or Image)
 export const summarizeReport = async (req, res) => {
   try {
@@ -181,37 +223,58 @@ export const summarizeReport = async (req, res) => {
     const response = await axios.get(url, { responseType: "arraybuffer" });
     const buffer = Buffer.from(response.data);
 
-    const tempPath = path.join(tmpDir, filename);
-    fs.writeFileSync(tempPath, buffer);
+    const ext = path.extname(filename).toLowerCase();
+    let detectedType = await fileTypeFromBuffer(buffer);
 
-    let imagePath = tempPath;
+    console.log("SummarizeReport → filename:", filename);
+    console.log("SummarizeReport → detectedType:", detectedType);
+    console.log("SummarizeReport → ext:", ext);
 
-    // ✅ If PDF, convert to image
-    if (filename.toLowerCase().endsWith(".pdf")) {
-      const outputPath = path.join(tmpDir, filename.replace(".pdf", ""));
-      const options = {
-        format: "png",
-        out_dir: tmpDir,
-        out_prefix: path.basename(outputPath),
-        page: 1, // Convert only first page
-      };
+    let extractedText = "";
 
-      await pdf.convert(tempPath, options);
+    if (
+      detectedType?.mime === "application/pdf" ||
+      ext === ".pdf"
+    ) {
+      // ✅ Use pdf-parse on the buffer directly
+      const data = await pdfParse(buffer);
+      extractedText = data.text || "";
+      console.log(
+        "SummarizeReport → PDF text length (pdf-parse):",
+        extractedText.length
+      );
+    } else if (detectedType?.mime?.startsWith("image/")) {
+      // 🧠 For images, run OCR
+      console.log("SummarizeReport → running Tesseract on image");
+      const tempPath = path.join(tmpDir, filename);
+      fs.writeFileSync(tempPath, buffer);
 
-      imagePath = `${outputPath}-1.png`;
-      console.log("Converted PDF to image:", imagePath);
+      const ocrResult = await Tesseract.recognize(
+        tempPath,
+        "eng+hin+mar"
+      );
+      extractedText = ocrResult.data.text || "";
+
+      fs.unlinkSync(tempPath);
+      console.log(
+        "SummarizeReport → OCR text length:",
+        extractedText.length
+      );
+    } else {
+      console.warn(
+        "SummarizeReport → Unsupported file type. mime:",
+        detectedType?.mime
+      );
     }
 
-    // 🧠 OCR: Extract text from image
-    const ocrResult = await Tesseract.recognize(imagePath, "eng");
-    const extractedText = ocrResult.data.text?.trim().slice(0, 4000);
+    extractedText = extractedText.trim().slice(0, 4000);
 
-    // Cleanup temp files
-    fs.unlinkSync(tempPath);
-    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-
-    if (!extractedText)
-      return res.status(400).json({ reply: "No readable text found." });
+    if (!extractedText) {
+      return res.status(400).json({
+        reply:
+          "No readable text found. If this is a scanned PDF, please upload it as an image (JPG/PNG) or a text-based PDF.",
+      });
+    }
 
     const prompt = `
 You are a medical AI assistant. Summarize the following medical report content briefly and professionally.
@@ -239,3 +302,5 @@ Text:
     res.status(500).json({ reply: "Failed to summarize the report." });
   }
 };
+
+
