@@ -1062,6 +1062,7 @@ export default function DoctorDashboard() {
     // later this will open WebRTC room
     // for now just navigate or log
     console.log("Joining call for appointment:", appointmentId);
+    window.location.href = `/consultation/${appointmentId}`
 
     // example navigation (adjust route as needed)
     // router.push(`/doctor/call/${appointmentId}`);

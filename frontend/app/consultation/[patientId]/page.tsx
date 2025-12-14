@@ -29,6 +29,9 @@ import {
   Maximize,
   Minimize,
 } from "lucide-react"
+import { useEffect, useRef } from "react";
+import io from "socket.io-client";
+
 
 export default function ConsultationPage({ params }: { params: { patientId: string } }) {
   const [isVideoOn, setIsVideoOn] = useState(true)
@@ -38,6 +41,64 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [consultationNotes, setConsultationNotes] = useState("")
   const [expandedSections, setExpandedSections] = useState<string[]>(["vitals"])
+
+
+  const socket = useRef<any>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const peerConnection = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const iceServers = {
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  };
+
+
+  useEffect(() => {
+    socket.current = io("http://localhost:5000");
+
+    socket.current.emit("join-room", params.patientId);
+
+    socket.current.on("user-joined", async () => {
+      if (!peerConnection.current) return;
+
+      const offer = await peerConnection.current.createOffer();
+      await peerConnection.current.setLocalDescription(offer);
+
+      socket.current.emit("offer", {
+        roomId: params.patientId,
+        offer,
+      });
+    });
+
+    socket.current.on("offer", async (offer) => {
+      if (!peerConnection.current) return;
+
+      await peerConnection.current.setRemoteDescription(offer);
+      const answer = await peerConnection.current.createAnswer();
+      await peerConnection.current.setLocalDescription(answer);
+
+      socket.current.emit("answer", {
+        roomId: params.patientId,
+        answer,
+      });
+    });
+
+    socket.current.on("answer", async (answer) => {
+      await peerConnection.current?.setRemoteDescription(answer);
+    });
+
+    socket.current.on("ice-candidate", async (candidate) => {
+      await peerConnection.current?.addIceCandidate(candidate);
+    });
+
+    return () => {
+      socket.current.disconnect();
+      peerConnection.current?.close();
+      localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+
 
   // Mock patient data
   const patientData = {
@@ -105,25 +166,83 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
     setExpandedSections((prev) => (prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]))
   }
 
-  const startCall = () => {
-    setIsCallActive(true)
-    console.log("Starting consultation call...")
-  }
+  const startCall = async () => {
+    setIsCallActive(true);
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+
+    // ✅ store stream
+    localStreamRef.current = stream;
+
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+    }
+
+    peerConnection.current = new RTCPeerConnection(iceServers);
+
+    stream.getTracks().forEach((track) => {
+      peerConnection.current?.addTrack(track, stream);
+    });
+
+    peerConnection.current.ontrack = (event) => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+      }
+    };
+
+    peerConnection.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.current.emit("ice-candidate", {
+          roomId: params.patientId,
+          candidate: event.candidate,
+        });
+      }
+    };
+  };
+
+
 
   const endCall = () => {
-    setIsCallActive(false)
-    setIsVideoOn(false)
-    setIsAudioOn(false)
-    console.log("Ending consultation call...")
-  }
+    // ❌ DON'T stop tracks unless leaving page
+    peerConnection.current?.close();
+    peerConnection.current = null;
+
+    setIsCallActive(false);
+    setIsVideoOn(true);
+    setIsAudioOn(true);
+  };
+
 
   const toggleVideo = () => {
-    setIsVideoOn(!isVideoOn)
-  }
+    if (!localStreamRef.current) return;
+
+    const videoTrack = localStreamRef.current
+      .getVideoTracks()
+      .find((track) => track.kind === "video");
+
+    if (!videoTrack) return;
+
+    videoTrack.enabled = !videoTrack.enabled;
+    setIsVideoOn(videoTrack.enabled);
+  };
+
 
   const toggleAudio = () => {
-    setIsAudioOn(!isAudioOn)
-  }
+    if (!localStreamRef.current) return;
+
+    const audioTrack = localStreamRef.current
+      .getAudioTracks()
+      .find((track) => track.kind === "audio");
+
+    if (!audioTrack) return;
+
+    audioTrack.enabled = !audioTrack.enabled;
+    setIsAudioOn(audioTrack.enabled);
+  };
+
 
   const switchToAudio = () => {
     setConsultationMode("audio")
@@ -178,14 +297,12 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
                     {/* Main video (patient) */}
                     <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
                       <div className="text-center text-white">
-                        <Avatar className="w-32 h-32 mx-auto mb-4">
-                          <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
-                            {patientData.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
+                        <video
+                          ref={remoteVideoRef}
+                          autoPlay
+                          playsInline
+                          className="w-full h-full object-cover"
+                        />
                         <p className="text-xl font-medium">{patientData.name}</p>
                         <p className="text-slate-300">Patient Video</p>
                       </div>
@@ -193,9 +310,14 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
                     {/* Doctor's video (small overlay) */}
                     <div className="absolute top-4 right-4 w-48 h-36 bg-slate-700 rounded-lg border-2 border-white/20 flex items-center justify-center">
                       <div className="text-center text-white">
-                        <Avatar className="w-16 h-16 mx-auto mb-2">
-                          <AvatarFallback className="bg-primary text-primary-foreground">DC</AvatarFallback>
-                        </Avatar>
+                        <video
+                          ref={localVideoRef}
+                          autoPlay
+                          muted
+                          playsInline
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+
                         <p className="text-sm">Dr. Chen</p>
                       </div>
                     </div>
@@ -253,9 +375,8 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
                 variant="ghost"
                 size="sm"
                 onClick={toggleAudio}
-                className={`rounded-full w-12 h-12 ${
-                  isAudioOn ? "bg-white/20 text-white" : "bg-destructive text-destructive-foreground"
-                }`}
+                className={`rounded-full w-12 h-12 ${isAudioOn ? "bg-white/20 text-white" : "bg-destructive text-destructive-foreground"
+                  }`}
               >
                 {isAudioOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
               </Button>
@@ -265,22 +386,21 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
                   variant="ghost"
                   size="sm"
                   onClick={toggleVideo}
-                  className={`rounded-full w-12 h-12 ${
-                    isVideoOn ? "bg-white/20 text-white" : "bg-destructive text-destructive-foreground"
-                  }`}
+                  className={`rounded-full w-12 h-12 ${isVideoOn ? "bg-white/20 text-white" : "bg-destructive text-destructive-foreground"
+                    }`}
                 >
                   {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
                 </Button>
               )}
 
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="sm"
                 onClick={consultationMode === "video" ? switchToAudio : switchToVideo}
                 className="rounded-full w-12 h-12 bg-white/20 text-white"
               >
                 {consultationMode === "video" ? <Phone className="w-5 h-5" /> : <Camera className="w-5 h-5" />}
-              </Button>
+              </Button> */}
 
               <Button
                 variant="ghost"

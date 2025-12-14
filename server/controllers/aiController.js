@@ -28,7 +28,9 @@ if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
 
 // ✅ Common helper function to call Gemini API
 async function callGemini(prompt) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  
+
 
   const response = await axios.post(
     url,
@@ -285,7 +287,7 @@ Text:
 `;
 
     const aiResponse = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       },

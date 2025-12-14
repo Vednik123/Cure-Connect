@@ -9,4 +9,5 @@ router.post("/", protect, createAppointment);
 router.get("/my", protect, getMyAppointments);
 router.get("/doctor/today", protect, getDoctorTodayQueue);
 
+
 export default router;
