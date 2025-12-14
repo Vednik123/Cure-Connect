@@ -26,57 +26,62 @@ export default function PatientAppointmentsPage() {
   const [loading, setLoading] = useState(false);
   const [successInfo, setSuccessInfo] = useState<null | { id: string; date: string; time: string }>(null);
 
-  // Replace with actual authenticated patient id (PATxxxxx or Mongo _id)
-  const patientId = "6754a1eaf7e4d1c23e83abcd";
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setSuccessInfo(null);
+    e.preventDefault();
+    setLoading(true);
+    setSuccessInfo(null);
 
-  try {
-    const payload = {
-      patientId,
-      doctorId: formData.doctorId,
-      preferredDate: formData.preferredDate,
-      preferredTime: formData.preferredTime, // ensure correct spelling here
-      notes: formData.notes,
-    };
+    try {
+      const payload = {
+        doctorId: formData.doctorId,
+        preferredDate: formData.preferredDate,
+        preferredTime: formData.preferredTime,
+        notes: formData.notes,
+      };
+      ;
 
-    // <-- New: log payload to browser console so we can confirm what's being sent
-    console.log("DEBUG payload about to be sent:", payload);
+      // <-- New: log payload to browser console so we can confirm what's being sent
+      console.log("DEBUG payload about to be sent:", payload);
 
-    const { data } = await axios.post("http://localhost:5000/api/appointments", payload, {
-      withCredentials: true,
-    });
+      const token = sessionStorage.getItem("token");
 
-    toast.success("Appointment submitted!");
+      const { data } = await axios.post(
+        "http://localhost:5000/api/appointments",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    const appt = data?.appointment;
-    setSuccessInfo({
-      id: appt?.appointmentId || appt?._id,
-      date: appt?.preferredDate,
-      time: appt?.preferredTime,
-    });
+      toast.success("Appointment submitted!");
 
-    setFormData({
-      doctorId: "",
-      preferredDate: "",
-      preferredTime: "",
-      notes: "",
-    });
-  } catch (err: any) {
-    console.error("axios error full:", err);
-    toast.error(err.response?.data?.message || "Failed to submit appointment.");
-  } finally {
-    setLoading(false);
-  }
-};
+      const appt = data?.appointment;
+      setSuccessInfo({
+        id: appt?.appointmentId || appt?._id,
+        date: appt?.preferredDate,
+        time: appt?.preferredTime,
+      });
+
+      setFormData({
+        doctorId: "",
+        preferredDate: "",
+        preferredTime: "",
+        notes: "",
+      });
+    } catch (err: any) {
+      console.error("axios error full:", err);
+      toast.error(err.response?.data?.message || "Failed to submit appointment.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   return (

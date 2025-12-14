@@ -50,6 +50,7 @@ import {
   User,
   Bot,
 } from "lucide-react"
+import axios from "axios"
 
 export default function DoctorDashboard() {
   const [activeTab, setActiveTab] = useState("queue")
@@ -1012,6 +1013,62 @@ export default function DoctorDashboard() {
     </Dialog>
   )
 
+
+  const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
+  useEffect(() => {
+    if (activeTab !== "queue") return;
+
+    const fetchTodayAppointments = async () => {
+      try {
+        const token = sessionStorage.getItem("token");
+
+        const res = await axios.get(
+          "http://localhost:5000/api/appointments/doctor/today",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const formattedAppointments = res.data.appointments.map((a: any) => ({
+          id: a._id,
+          name: a.patient?.name || "Patient",
+          age: a.patient?.age || "--",
+          condition: a.notes || "No notes provided",
+          appointmentTime: a.preferredTime,
+          lastVisit: "—",
+          priority: "normal",
+          status: "waiting",
+          vitals: {
+            bp: "--",
+            hr: "--",
+          },
+          reports: [],
+          prescriptions: [],
+        }));
+
+        setTodayAppointments(formattedAppointments);
+      } catch (err) {
+        console.error("Failed to load today's appointments", err);
+      }
+    };
+
+    fetchTodayAppointments();
+  }, [activeTab]);
+
+
+  const handleJoinCall = (appointmentId: string) => {
+    // later this will open WebRTC room
+    // for now just navigate or log
+    console.log("Joining call for appointment:", appointmentId);
+
+    // example navigation (adjust route as needed)
+    // router.push(`/doctor/call/${appointmentId}`);
+  };
+
+
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -1135,7 +1192,7 @@ export default function DoctorDashboard() {
             </div>
 
             <div className="space-y-3">
-              {patientQueue.map((patient) => (
+              {todayAppointments.map((patient) => (
                 <Card key={patient.id} className="transition-all hover:shadow-md">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -1144,17 +1201,20 @@ export default function DoctorDashboard() {
                           <AvatarFallback className="bg-secondary text-secondary-foreground">
                             {patient.name
                               .split(" ")
-                              .map((n) => n[0])
+                              .map((n: string) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
+
                         <div className="flex-1">
                           <div className="flex items-center space-x-2">
                             <h4 className="font-medium text-foreground">{patient.name}</h4>
                             <span className="text-sm text-muted-foreground">({patient.age}y)</span>
                             {getPriorityIcon(patient.priority)}
                           </div>
+
                           <p className="text-sm text-muted-foreground">{patient.condition}</p>
+
                           <div className="flex items-center space-x-4 mt-1 text-xs text-muted-foreground">
                             <span className="flex items-center space-x-1">
                               <Clock className="w-3 h-3" />
@@ -1168,45 +1228,26 @@ export default function DoctorDashboard() {
                           </div>
                         </div>
                       </div>
+
                       <div className="flex items-center space-x-3">
-                        <div className="text-right text-sm">
-                          <div className="text-muted-foreground">Vitals</div>
-                          <div className="text-foreground">
-                            BP: {patient.vitals.bp} | HR: {patient.vitals.hr}
-                          </div>
-                        </div>
-                        <Badge className={getStatusColor(patient.status)}>{patient.status.replace("-", " ")}</Badge>
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleStartConsultation(patient)}
-                              disabled={patient.status === "in-consultation"}
-                            >
-                              <Video className="w-4 h-4 mr-1" />
-                              {patient.status === "in-consultation" ? "In Progress" : "Start"}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleGeneratePrescription(patient)}>
-                              <Pill className="w-4 h-4 mr-1" />
-                              Prescribe
-                            </Button>
-                          </div>
-                          <div className="flex space-x-2">
-                            <Button size="sm" variant="outline" onClick={() => handleFileUpload(patient, "report")}>
-                              <Upload className="w-4 h-4 mr-1" />
-                              Upload Report
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => viewPatientFiles(patient)}>
-                              <Eye className="w-4 h-4 mr-1" />
-                              View Files
-                            </Button>
-                          </div>
-                        </div>
+                        <Badge className={getStatusColor(patient.status)}>
+                          {patient.status.replace("-", " ")}
+                        </Badge>
+
+                        <Button
+                          size="sm"
+                          onClick={() => handleJoinCall(patient.id)}
+                        className="cursor-pointer">
+                          <Video className="w-4 h-4 mr-1" />
+                          Join Call
+                        </Button>
                       </div>
+
                     </div>
                   </CardContent>
                 </Card>
               ))}
+
             </div>
           </div>
         )}

@@ -31,36 +31,32 @@ async function resolveDoctor(input) {
   return await DoctorProfile.findOne({ doctorId: input });
 }
 
-/**
- * POST /api/appointments
- * Body: { patientId, doctorId, preferredDate, preferredTime, notes }
- */
-// replace ONLY the createAppointment function in controllers/appointmentController.js
 export async function createAppointment(req, res) {
   try {
-    console.log("➡️  POST /api/appointments - body:", JSON.stringify(req.body));
+    // console.log("➡️ POST /api/appointments body:", req.body);
 
-    const { patientId, doctorId, preferredDate, preferredTime, notes } = req.body;
+    const { doctorId, preferredDate, preferredTime, notes } = req.body;
 
-    if (!patientId || !doctorId || !preferredDate || !preferredTime) {
-      console.warn("⚠️  Validation failed - missing fields:", {
-        patientId: !!patientId,
-        doctorId: !!doctorId,
-        preferredDate: !!preferredDate,
-        preferredTime: !!preferredTime,
-      });
-      return res.status(400).json({ message: "patientId, doctorId, preferredDate and preferredTime are required." });
+    const cleanedDoctorId = doctorId.trim();
+
+
+
+    if (!cleanedDoctorId || !preferredDate || !preferredTime) {
+      return res.status(400).json({ message: "doctorId, preferredDate and preferredTime are required." });
     }
 
-    const patient = await resolvePatient(patientId);
-    console.log("🔎 Resolved patient:", patient ? { _id: patient._id.toString(), patientId: patient.patientId } : null);
-    if (!patient) return res.status(404).json({ message: "Patient not found." });
+    const patient = await Patient.findOne({ user: req.user._id });
+    if (!patient) {
+      return res.status(404).json({ message: "Patient profile not found." });
+    }
 
-    const doctor = await resolveDoctor(doctorId);
-    console.log("🔎 Resolved doctor:", doctor ? { _id: doctor._id.toString(), doctorId: doctor.doctorId } : null);
-    if (!doctor) return res.status(404).json({ message: "Doctor not found." });
+    const doctor = await resolveDoctor(cleanedDoctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Enter correct doctor ID." });
+    }
 
-    const appt = new Appointment({
+    // ✅ STEP 3: Create appointment
+    const appointment = await Appointment.create({
       patient: patient._id,
       doctor: doctor._id,
       preferredDate,
@@ -68,23 +64,83 @@ export async function createAppointment(req, res) {
       notes: notes || "",
     });
 
-    const saved = await appt.save().catch((e) => {
-      console.error("❌ save() error:", e);
-      throw e;
-    });
-
-    await saved.populate([
+    await appointment.populate([
       { path: "patient", select: "patientId name" },
-      { path: "doctor", select: "doctorId name" },
+      { path: "doctor", select: "doctorId name speciality" },
     ]);
 
-    console.log("✅ Appointment saved:", { id: saved._id.toString(), appointmentId: saved.appointmentId });
-    return res.status(201).json({ message: "Appointment created.", appointment: saved });
+    console.log("✅ Appointment created:", appointment.appointmentId);
+
+    return res.status(201).json({
+      message: "Appointment booked successfully",
+      appointment,
+    });
+
   } catch (err) {
-    console.error("💥 createAppointment error:", err);
-    if (err && err.code === 11000) {
-      return res.status(500).json({ message: "Duplicate appointment id, try again.", detail: err.keyValue || err });
+    console.error("axios error full:", err);
+
+    const errorMsg =
+      err?.response?.data?.message ||
+      err?.response?.data?.msg ||
+      "Enter correct doctor ID.";
+
+    toast.error(errorMsg);
+
+  }
+}
+
+
+// GET /api/appointments/my
+export async function getMyAppointments(req, res) {
+  try {
+    // 1️⃣ Find patient using logged-in user
+    const patient = await Patient.findOne({ user: req.user._id });
+    if (!patient) {
+      return res.status(404).json({ message: "Patient profile not found." });
     }
-    return res.status(500).json({ message: "Server error.", detail: err.message || String(err) });
+
+    // 2️⃣ Find appointments
+    const appointments = await Appointment.find({ patient: patient._id })
+      .populate({
+        path: "doctor",
+        select: "name speciality doctorId",
+      })
+      .sort({ createdAt: -1 });
+
+    res.json({ appointments });
+  } catch (err) {
+    console.error("❌ getMyAppointments error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+
+// GET /api/appointments/doctor/today
+export async function getDoctorTodayQueue(req, res) {
+  try {
+    // 1️⃣ Find doctor profile
+    const doctor = await DoctorProfile.findOne({ user: req.user._id });
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor profile not found." });
+    }
+
+    // 2️⃣ Get today's date (YYYY-MM-DD)
+    const today = new Date().toISOString().split("T")[0];
+
+    // 3️⃣ Fetch today's appointments
+    const appointments = await Appointment.find({
+      doctor: doctor._id,
+      preferredDate: today,
+    })
+      .populate({
+        path: "patient",
+        select: "name age patientId",
+      })
+      .sort({ preferredTime: 1 });
+
+    res.json({ appointments });
+  } catch (err) {
+    console.error("❌ getDoctorTodayQueue error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 }

@@ -53,7 +53,7 @@ export default function PatientDashboard() {
 
 
 
-   const [patData, setPatData] = useState<any | null>(null)
+  const [patData, setPatData] = useState<any | null>(null)
   const [token, setToken] = useState<string | null>(null)
 
   // Get token from sessionStorage
@@ -80,7 +80,7 @@ export default function PatientDashboard() {
 
 
 
-const initials = patData?.name
+  const initials = patData?.name
     ? patData.name
     : "PT";
 
@@ -91,26 +91,26 @@ const initials = patData?.name
 
 
 
-  const upcomingAppointments = [
-    {
-      id: 1,
-      doctor: "Dr. Michael Chen",
-      specialty: "Cardiologist",
-      date: "2024-02-10",
-      time: "10:30 AM",
-      type: "Video Call",
-      status: "confirmed",
-    },
-    {
-      id: 2,
-      doctor: "Dr. Emily Rodriguez",
-      specialty: "Endocrinologist",
-      date: "2024-02-15",
-      time: "2:00 PM",
-      type: "In-Person",
-      status: "pending",
-    },
-  ]
+  // const upcomingAppointments = [
+  //   {
+  //     id: 1,
+  //     doctor: "Dr. Michael Chen",
+  //     specialty: "Cardiologist",
+  //     date: "2024-02-10",
+  //     time: "10:30 AM",
+  //     type: "Video Call",
+  //     status: "confirmed",
+  //   },
+  //   {
+  //     id: 2,
+  //     doctor: "Dr. Emily Rodriguez",
+  //     specialty: "Endocrinologist",
+  //     date: "2024-02-15",
+  //     time: "2:00 PM",
+  //     type: "In-Person",
+  //     status: "pending",
+  //   },
+  // ]
 
   const recentPrescriptions = [
     {
@@ -313,8 +313,8 @@ const initials = patData?.name
     <button
       onClick={() => onClick(id)}
       className={`flex flex-col items-center space-y-1 p-3 rounded-lg transition-all touch-target ${isActive
-          ? "bg-primary text-primary-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground hover:bg-accent"
+        ? "bg-primary text-primary-foreground shadow-sm"
+        : "text-muted-foreground hover:text-foreground hover:bg-accent"
         }`}
     >
       <Icon className="w-5 h-5" />
@@ -328,6 +328,43 @@ const initials = patData?.name
     const id = sessionStorage.getItem("patientId")
     setPatientId(id)
   }, [])
+
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const token = sessionStorage.getItem("token");
+
+        const res = await axios.get(
+          "http://localhost:5000/api/appointments/my",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        // Transform DB data → UI data
+        const formatted = res.data.appointments.map((a: any) => ({
+          id: a._id,
+          doctor: a.doctor?.name || "Doctor",
+          specialty: a.doctor?.speciality || "General",
+          date: a.preferredDate,
+          time: a.preferredTime,
+          status: "confirmed", // later make dynamic
+          type: "Video Call", // later from DB
+        }));
+
+        setUpcomingAppointments(formatted);
+      } catch (err) {
+        console.error("Failed to load appointments", err);
+      }
+    };
+
+    fetchAppointments();
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -361,33 +398,33 @@ const initials = patData?.name
       {/* Main Content */}
       <main className="p-4 pb-20">
         {activeTab === "home" && (
-         <div className="space-y-6 animate-slide-in">
-      {/* Welcome Section */}
-      <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
-        <CardContent className="p-6">
-          <div className="flex items-center space-x-4">
-            <Avatar className="w-16 h-16">
-              <AvatarImage src="/patient-avatar.jpg" />
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold text-foreground">
-                Welcome back, {patData?.name || "Patient"}!
-              </h2>
-              <p className="text-muted-foreground">
-                Your next appointment is on {patData?.nextAppointment || "23dec 2025"}
-              </p>
-              <div className="flex items-center space-x-4 mt-2">
-                <Badge variant="outline">Age: {patData?.age || "N/A"}</Badge>
-                <Badge variant="outline">Blood: {patData?.bloodGroup || "N/A"}</Badge>
-                  <Badge variant="outline">Your Patient ID: {patData?.patientId || "Id"}</Badge>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <div className="space-y-6 animate-slide-in">
+            {/* Welcome Section */}
+            <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4">
+                  <Avatar className="w-16 h-16">
+                    <AvatarImage src="/patient-avatar.jpg" />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-semibold text-foreground">
+                      Welcome back, {patData?.name || "Patient"}!
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Your next appointment is on {patData?.nextAppointment || "23dec 2025"}
+                    </p>
+                    <div className="flex items-center space-x-4 mt-2">
+                      <Badge variant="outline">Age: {patData?.age || "N/A"}</Badge>
+                      <Badge variant="outline">Blood: {patData?.bloodGroup || "N/A"}</Badge>
+                      <Badge variant="outline">Your Patient ID: {patData?.patientId || "Id"}</Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Quick Actions */}
             <div className="grid grid-cols-3 gap-4">
@@ -791,7 +828,7 @@ const initials = patData?.name
           </div>
         )}
 
-        {activeTab === "profile"  && <PatientProfile />}
+        {activeTab === "profile" && <PatientProfile />}
       </main>
 
       {/* Bottom Navigation */}
