@@ -1022,8 +1022,8 @@ export default function DoctorDashboard() {
       try {
         const token = sessionStorage.getItem("token");
 
-        const res = await axios.get(
-          "http://localhost:5000/api/appointments/doctor/today",
+        const res = await 
+          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/appointments/doctor/today`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
