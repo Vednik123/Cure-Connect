@@ -51,7 +51,7 @@ export default function PatientAppointmentsPage() {
       const token = sessionStorage.getItem("token");
 
       const { data } = await axios.post(
-        "http://localhost:5000/api/appointments",
+         `${process.env.NEXT_PUBLIC_API_URL}/appointments`,
         payload,
         {
           headers: {
