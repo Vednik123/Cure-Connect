@@ -38,7 +38,7 @@ export default function ConsultationPage({
 }: {
   params: { appointmentId: string };
 }) {
-  
+
   useEffect(() => {
     console.log("APPOINTMENT ID:", params.appointmentId);
   }, []);
@@ -60,9 +60,23 @@ export default function ConsultationPage({
   const isInitiator = useRef(false);
   const isReady = useRef(false);
   const role = useRef<"initiator" | "receiver" | null>(null);
+
   const iceServers = {
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      {
+        urls: "turn:global.relay.metered.ca:80",
+        username: process.env.NEXT_PUBLIC_TURN_USERNAME!,
+        credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL!,
+      },
+      {
+        urls: "turn:global.relay.metered.ca:443",
+        username: process.env.NEXT_PUBLIC_TURN_USERNAME!,
+        credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL!,
+      },
+    ],
   };
+
 
 
   useEffect(() => {
