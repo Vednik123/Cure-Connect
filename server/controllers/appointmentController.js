@@ -130,7 +130,6 @@ export async function getDoctorTodayQueue(req, res) {
     // 3️⃣ Fetch today's appointments
     const appointments = await Appointment.find({
       doctor: doctor._id,
-      preferredDate: today,
     })
       .populate({
         path: "patient",
