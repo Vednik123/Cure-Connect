@@ -1032,7 +1032,8 @@ export default function DoctorDashboard() {
         );
 
         const formattedAppointments = res.data.appointments.map((a: any) => ({
-          id: a._id,
+          appointmentId : a.appointmentId,          // ✅ FIXED
+          mongoId: a._id,               // (optional, keep if needed)
           name: a.patient?.name || "Patient",
           age: a.patient?.age || "--",
           condition: a.notes || "No notes provided",
@@ -1047,6 +1048,7 @@ export default function DoctorDashboard() {
           reports: [],
           prescriptions: [],
         }));
+
 
         setTodayAppointments(formattedAppointments);
       } catch (err) {
@@ -1237,8 +1239,8 @@ export default function DoctorDashboard() {
 
                         <Button
                           size="sm"
-                          onClick={() => handleJoinCall(patient.id)}
-                        className="cursor-pointer">
+                          onClick={() => handleJoinCall(patient.appointmentId)}
+                          className="cursor-pointer">
                           <Video className="w-4 h-4 mr-1" />
                           Join Call
                         </Button>

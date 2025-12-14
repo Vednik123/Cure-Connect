@@ -347,14 +347,15 @@ export default function PatientDashboard() {
 
         // Transform DB data → UI data
         const formatted = res.data.appointments.map((a: any) => ({
-          id: a._id,
+          id: a.appointmentId,        // ✅ USE THIS
           doctor: a.doctor?.name || "Doctor",
           specialty: a.doctor?.speciality || "General",
           date: a.preferredDate,
           time: a.preferredTime,
-          status: "confirmed", // later make dynamic
-          type: "Video Call", // later from DB
+          status: "confirmed",
+          type: "Video Call",
         }));
+
 
         setUpcomingAppointments(formatted);
       } catch (err) {

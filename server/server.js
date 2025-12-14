@@ -49,13 +49,33 @@ const io = new Server(server, {
   },
 });
 
+const roomState = {};
+const roomReadyCount = {};
 
 io.on("connection", (socket) => {
   console.log("🔌 User connected:", socket.id);
 
   socket.on("join-room", (roomId) => {
     socket.join(roomId);
-    socket.to(roomId).emit("user-joined");
+
+    // First user becomes initiator
+    if (!roomState[roomId]) {
+      roomState[roomId] = socket.id;
+    }
+
+    const role = roomState[roomId] === socket.id ? "initiator" : "receiver";
+    socket.emit("role", role);
+
+    console.log(`👥 ${socket.id} joined ${roomId} as ${role}`);
+  });
+
+  socket.on("ready-for-call", (roomId) => {
+    roomReadyCount[roomId] = (roomReadyCount[roomId] || 0) + 1;
+
+    if (roomReadyCount[roomId] === 2) {
+      io.to(roomId).emit("both-ready");
+      console.log(`✅ Both users ready in ${roomId}`);
+    }
   });
 
   socket.on("offer", ({ roomId, offer }) => {
@@ -72,9 +92,16 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("❌ User disconnected:", socket.id);
+
+    // Cleanup rooms
+    for (const roomId in roomState) {
+      if (roomState[roomId] === socket.id) {
+        delete roomState[roomId];
+        delete roomReadyCount[roomId];
+      }
+    }
   });
 });
-
 
 // Routes
 app.use("/api/auth", authRoutes);

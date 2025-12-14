@@ -33,7 +33,16 @@ import { useEffect, useRef } from "react";
 import io from "socket.io-client";
 
 
-export default function ConsultationPage({ params }: { params: { patientId: string } }) {
+export default function ConsultationPage({
+  params,
+}: {
+  params: { appointmentId: string };
+}) {
+  
+  useEffect(() => {
+    console.log("APPOINTMENT ID:", params.appointmentId);
+  }, []);
+
   const [isVideoOn, setIsVideoOn] = useState(true)
   const [isAudioOn, setIsAudioOn] = useState(true)
   const [isCallActive, setIsCallActive] = useState(false)
@@ -48,37 +57,53 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const isInitiator = useRef(false);
+  const isReady = useRef(false);
+  const role = useRef<"initiator" | "receiver" | null>(null);
   const iceServers = {
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
   };
 
 
   useEffect(() => {
-    socket.current = io("http://localhost:5000");
+    socket.current = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
+      transports: ["websocket"],
+      withCredentials: true,
+    });
 
-    socket.current.emit("join-room", params.patientId);
+    socket.current.on("role", (r) => {
+      role.current = r;
+    });
 
-    socket.current.on("user-joined", async () => {
+
+    // ✅ JOIN APPOINTMENT ROOM
+    socket.current.emit("join-room", params.appointmentId);
+
+    socket.current.on("both-ready", async () => {
       if (!peerConnection.current) return;
+      if (role.current !== "initiator") return;
 
       const offer = await peerConnection.current.createOffer();
       await peerConnection.current.setLocalDescription(offer);
 
       socket.current.emit("offer", {
-        roomId: params.patientId,
+        roomId: params.appointmentId,
         offer,
       });
     });
+
+
 
     socket.current.on("offer", async (offer) => {
       if (!peerConnection.current) return;
 
       await peerConnection.current.setRemoteDescription(offer);
+
       const answer = await peerConnection.current.createAnswer();
       await peerConnection.current.setLocalDescription(answer);
 
       socket.current.emit("answer", {
-        roomId: params.patientId,
+        roomId: params.appointmentId,
         answer,
       });
     });
@@ -91,18 +116,20 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
       await peerConnection.current?.addIceCandidate(candidate);
     });
 
+
     return () => {
       socket.current.disconnect();
       peerConnection.current?.close();
-      localStreamRef.current?.getTracks().forEach((track) => track.stop());
+      localStreamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
 
 
+
   // Mock patient data
   const patientData = {
-    id: params.patientId,
+    id: params.appointmentId,
     name: "Sarah Johnson",
     age: 34,
     bloodGroup: "O+",
@@ -174,7 +201,6 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
       audio: true,
     });
 
-    // ✅ store stream
     localStreamRef.current = stream;
 
     if (localVideoRef.current) {
@@ -183,25 +209,33 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
 
     peerConnection.current = new RTCPeerConnection(iceServers);
 
+    // Add tracks
     stream.getTracks().forEach((track) => {
-      peerConnection.current?.addTrack(track, stream);
+      peerConnection.current!.addTrack(track, stream);
     });
 
+    // Receive remote tracks
     peerConnection.current.ontrack = (event) => {
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = event.streams[0];
       }
     };
 
+    // ICE candidates
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate) {
         socket.current.emit("ice-candidate", {
-          roomId: params.patientId,
+          roomId: params.appointmentId,
           candidate: event.candidate,
         });
       }
     };
+
+    isReady.current = true;
+    socket.current.emit("ready-for-call", params.appointmentId);
+
   };
+
 
 
 
@@ -231,17 +265,13 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
 
 
   const toggleAudio = () => {
-    if (!localStreamRef.current) return;
-
-    const audioTrack = localStreamRef.current
-      .getAudioTracks()
-      .find((track) => track.kind === "audio");
-
+    const audioTrack = localStreamRef.current?.getAudioTracks()[0];
     if (!audioTrack) return;
 
     audioTrack.enabled = !audioTrack.enabled;
     setIsAudioOn(audioTrack.enabled);
   };
+
 
 
   const switchToAudio = () => {
@@ -258,6 +288,9 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
     console.log("Saving consultation notes:", consultationNotes)
     // Here you would save to backend
   }
+
+
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -292,43 +325,34 @@ export default function ConsultationPage({ params }: { params: { patientId: stri
           <div className="h-full flex items-center justify-center relative">
             {isCallActive && consultationMode === "video" ? (
               <div className="w-full h-full bg-slate-800 flex items-center justify-center">
-                {isVideoOn ? (
-                  <div className="relative w-full h-full">
-                    {/* Main video (patient) */}
-                    <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                      <div className="text-center text-white">
-                        <video
-                          ref={remoteVideoRef}
-                          autoPlay
-                          playsInline
-                          className="w-full h-full object-cover"
-                        />
-                        <p className="text-xl font-medium">{patientData.name}</p>
-                        <p className="text-slate-300">Patient Video</p>
-                      </div>
-                    </div>
-                    {/* Doctor's video (small overlay) */}
-                    <div className="absolute top-4 right-4 w-48 h-36 bg-slate-700 rounded-lg border-2 border-white/20 flex items-center justify-center">
-                      <div className="text-center text-white">
-                        <video
-                          ref={localVideoRef}
-                          autoPlay
-                          muted
-                          playsInline
-                          className="w-full h-full object-cover rounded-lg"
-                        />
+                <div className="relative w-full h-full">
+                  {/* REMOTE VIDEO */}
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
 
-                        <p className="text-sm">Dr. Chen</p>
-                      </div>
+
+                  {/* LOCAL VIDEO */}
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className={`absolute top-4 right-4 w-48 h-36 rounded-lg object-cover"
+                      }`}
+                  />
+
+                  {!isVideoOn && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                      <VideoOff className="w-20 h-20 mb-3 text-slate-400" />
+                      <p className="text-lg">Camera Off</p>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-white">
-                    <VideoOff className="w-24 h-24 mx-auto mb-4 text-slate-400" />
-                    <p className="text-xl font-medium">Video Off</p>
-                    <p className="text-slate-300">Audio-only consultation</p>
-                  </div>
-                )}
+                  )}
+                </div>
+
               </div>
             ) : isCallActive && consultationMode === "audio" ? (
               <div className="text-center text-white">
