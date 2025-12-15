@@ -9,7 +9,8 @@ The platform is designed with a strong focus on **security, scalability, data pr
 
 ## 🚀 Live Demo
 - **Frontend (Vercel):** https://cure-connect-pink.vercel.app  
-- **Backend:** Deployed on Render  
+- **Backend:** Deployed on Render
+- **Diet ML Service (Flask):** Deployed separately on Render
 
 ---
 
@@ -25,20 +26,21 @@ Traditional healthcare systems face several limitations:
 
 ---
 
-## 🧩 Stakeholders & Roles
+## Stakeholders & Roles
 
 ### 👤 Patient
 - Book appointments using Doctor ID
 - Join real-time video consultations
 - View prescriptions, vitals, and summaries
-- Use AI Health Assistant & AI Diet Assistant
+- Use AI Health Assistant
+- Get AI-powered diet recommendations (text, documents & ML-based)
 
 ### 🧑‍⚕️ Doctor
 - View today’s patient queue
 - Access patient data only for booked appointments
 - Join video consultations
 - View and summarize patient reports using Patient ID
-- Upload reports and prescriptions using cloudinary and by taking patient's permission.
+- Upload reports and prescriptions via Cloudinary (with patient consent)
 
 ### 🏥 Admin (Hospital-Level)
 - Access all doctors and patients under the hospital
@@ -52,7 +54,7 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 
 ## ✨ Key Features
 
-### 📅 Appointment Management
+### Appointment Management
 - Secure appointment booking using **Doctor ID**
 - Unique `appointmentId` generated for each booking
 - Separate dashboards for patient and doctor
@@ -60,7 +62,7 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 
 ---
 
-### 📹 Video Consultation (WebRTC)
+### Video Consultation (WebRTC)
 - Peer-to-peer real-time video & audio calls
 - Camera and microphone on/off controls
 - Works across **different devices and networks**
@@ -68,7 +70,7 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 
 ---
 
-### 🤖 AI Health Assistant
+### AI Health Assistant
 - Built using **Google Gemini**
 - Handles only health-related queries
 - Supports **text-based medical questions**
@@ -77,16 +79,22 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 
 ---
 
-### 🥗 AI Diet Assistant
+### AI Diet Assistant
 - AI-powered personalized diet recommendations(text + documents)
 - Users can **upload medical reports (PDF / images)**
 - Uses **OCR (Tesseract)** to extract text
 - Extracted data is analyzed using **Gemini AI**
 - Diet plans are generated based on medical conditions
 
+### ML-Based Diet Prediction Engine (Flask + LightGBM)
+- A custom-trained **LightGBM Regressor model**
+- Trained on a dataset of **5000+ records**
+- Deployed separately as a **Flask microservice**
+- Integrated with frontend and backend
+
 ---
 
-### 📄 Medical Report Handling
+### Medical Report Handling
 - Upload reports (Lab reports, prescriptions, vitals)
 - OCR used for text extraction from documents
 - AI-generated summaries for doctors and patients
@@ -95,7 +103,7 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 
 ---
 
-### ⛓️ Blockchain Integration
+### Blockchain Integration
 - Medical reports are hashed and stored on blockchain
 - Ensures:
   - Integrity of reports
@@ -105,7 +113,7 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 
 ---
 
-### 📊 Admin Analytics Dashboard
+### Admin Analytics Dashboard
 - Visual graphs and charts for:
   - Total doctors
   - Total patients
@@ -116,7 +124,7 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 
 ---
 
-### 🔐 Security & Privacy
+### Security & Privacy
 - JWT-based authentication
 - Role-based access control (Patient / Doctor / Admin)
 - Appointment-level authorization
@@ -125,7 +133,7 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
 - Next.js (App Router)
@@ -146,6 +154,8 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 - Google Gemini API
 - Tesseract OCR
 - OCR-based document parsing
+- LightGBM Regressor
+- Flask (ML microservice)
 
 ### Deployment & Services
 - Vercel (Frontend)
@@ -158,7 +168,7 @@ Each **hospital has its own admin**, ensuring **data isolation and privacy**.
 
 ## ⚙️ Environment Variables
 
-### 🔐 Backend `.env`
+### Backend `.env`
 ```env
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
@@ -171,8 +181,7 @@ GEMINI_API_KEY=your key
 FRONTEND_URL=http://localhost:3000
 ```
 
-
-### 🔐 Frontend `.env`
+### Frontend `.env`
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
 NEXT_PUBLIC_FLASK_URL=http://localhost:5001
@@ -180,6 +189,13 @@ NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
 NEXT_PUBLIC_TURN_USERNAME=your name
 NEXT_PUBLIC_TURN_CREDENTIAL=your key
 ```
+
+---
+## Contact
+For any queries or suggestions, feel free to reach out:
+- **Name**: Vedant Nikam
+- **Email**: [nikam.vedant05@gmail.com]
+- **GitHub**: [https://github.com/Vednik123](https://github.com/Vednik123)
 
 
 
