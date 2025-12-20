@@ -1,4 +1,4 @@
-# 🩺 Cure-Connect  
+# 🩺 Cure-Connect     
 **AI-Powered Secure Telemedicine & Healthcare Management Platform**
 
 Cure-Connect is a full-stack healthcare platform that connects **patients, doctors, and hospital administrators** through secure appointment booking, protected medical data handling, AI-powered assistance, blockchain-secured document storage, and **real-time video consultations**.
@@ -196,6 +196,7 @@ For any queries or suggestions, feel free to reach out:
 - **Name**: Vedant Nikam
 - **Email**: [nikam.vedant05@gmail.com]
 - **GitHub**: [https://github.com/Vednik123](https://github.com/Vednik123)
+
 
 
 
